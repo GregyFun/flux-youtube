@@ -73,6 +73,15 @@
     display: flex; flex-direction: column; overflow: hidden;
   }
   #sidebar.open{ transform: translateX(0); }
+  .sidebar-toggle-row{ padding: 14px 16px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .switch-label{ display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; cursor: pointer; }
+  .switch{ position: relative; display: inline-block; width: 38px; height: 22px; flex-shrink: 0; }
+  .switch input{ opacity: 0; width: 0; height: 0; }
+  .switch-slider{ position: absolute; inset: 0; background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; transition: 0.2s; }
+  .switch-slider:before{ content: ""; position: absolute; height: 16px; width: 16px; left: 2px; top: 2px; background: var(--text-dim); border-radius: 50%; transition: 0.2s; }
+  .switch input:checked + .switch-slider{ background: var(--accent); border-color: var(--accent); }
+  .switch input:checked + .switch-slider:before{ background: #1a1200; transform: translateX(16px); }
+
   .sidebar-header{
     padding: 16px 16px 10px; font-size: 13px; font-weight: 650; color: var(--text-dim);
     text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
@@ -157,8 +166,9 @@
   .thumb-link img{ width: 100%; height: 100%; object-fit: cover; display: block; }
   .short-badge{
     position: absolute; left: 8px; bottom: 8px; z-index: 2;
-    background: rgba(20,22,26,0.85); color: var(--text); font-size: 11px; font-weight: 650;
-    padding: 3px 8px; border-radius: 6px; letter-spacing: 0.02em;
+    background: rgba(20,22,26,0.9); color: var(--accent); font-size: 13px; font-weight: 700;
+    padding: 5px 11px; border-radius: 8px; letter-spacing: 0.02em;
+    border: 2px solid var(--accent);
   }
   .video-info{ display: flex; gap: 10px; margin-top: 10px; }
   .avatar-link{ flex-shrink: 0; }
@@ -227,6 +237,12 @@
 <div id="body-layout">
   <div id="overlay"></div>
   <aside id="sidebar">
+    <div class="sidebar-toggle-row">
+      <label class="switch-label">
+        <span>Masquer les Shorts</span>
+        <span class="switch"><input type="checkbox" id="hide-shorts-toggle"><span class="switch-slider"></span></span>
+      </label>
+    </div>
     <div class="sidebar-header">Abonnements</div>
     <div id="sidebar-list"></div>
   </aside>
@@ -266,7 +282,7 @@
 <script>
 (function(){
   const STORAGE_KEY = 'yt-config';
-  let config = { apiKey: '', clientId: '', channels: [], hiddenChannelIds: [] };
+  let config = { apiKey: '', clientId: '', channels: [], hiddenChannelIds: [], hideShorts: false };
   let allVideos = [];               // vidéos réelles déjà chargées (hors Shorts), triées par date
   let pendingChannelIds = new Set(); // chaînes dont le chargement n'est pas terminé
   let channelLastPublished = {};     // channelId -> date de la vidéo la plus récente connue
@@ -275,6 +291,7 @@
   let activeCategory = 'all';
 
   const menuBtn = document.getElementById('menu-btn');
+  const hideShortsToggle = document.getElementById('hide-shorts-toggle');
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('overlay');
   const sidebarList = document.getElementById('sidebar-list');
@@ -324,11 +341,12 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         const parsed = JSON.parse(raw);
-        config = Object.assign({ apiKey:'', clientId:'', channels:[], hiddenChannelIds:[] }, parsed);
+        config = Object.assign({ apiKey:'', clientId:'', channels:[], hiddenChannelIds:[], hideShorts:false }, parsed);
       }
     }catch(e){ /* pas de config sauvegardée, ou stockage indisponible — ok */ }
     apiKeyInput.value = config.apiKey || '';
     clientIdInput.value = config.clientId || '';
+    hideShortsToggle.checked = !!config.hideShorts;
     renderChanList();
     renderSidebar();
   }
@@ -340,6 +358,12 @@
 
   apiKeyInput.addEventListener('input', () => { config.apiKey = apiKeyInput.value.trim(); saveConfig(); });
   clientIdInput.addEventListener('input', () => { config.clientId = clientIdInput.value.trim(); saveConfig(); });
+
+  hideShortsToggle.addEventListener('change', () => {
+    config.hideShorts = hideShortsToggle.checked;
+    saveConfig();
+    applyFilterAndRender();
+  });
 
   function renderChanList(){
     chanList.innerHTML = '';
@@ -574,6 +598,7 @@
     const counts = {};
     allVideos.forEach(v => {
       if(isHidden(v.channelId) || !v.categoryId) return;
+      if(config.hideShorts && v.isShort) return;
       counts[v.categoryId] = (counts[v.categoryId] || 0) + 1;
     });
     const cats = Object.keys(counts).sort((a,b) => counts[b]-counts[a]);
@@ -647,7 +672,7 @@
   function applyFilterAndRender(){
     renderChips();
     feedEl.innerHTML = '';
-    const visible = allVideos.filter(v => !isHidden(v.channelId) && (activeCategory === 'all' || v.categoryId === activeCategory));
+    const visible = allVideos.filter(v => !isHidden(v.channelId) && (activeCategory === 'all' || v.categoryId === activeCategory) && (!config.hideShorts || !v.isShort));
     visible.forEach(v => feedEl.appendChild(videoCard(v)));
     pendingChannelIds.forEach(id => { if(!isHidden(id)) feedEl.appendChild(skeletonCard()); });
 

@@ -191,12 +191,12 @@
     }
   }
 
-  apiKeyInput.addEventListener('change', () => {
+  apiKeyInput.addEventListener('input', () => {
     config.apiKey = apiKeyInput.value.trim();
     saveConfig();
   });
 
-  clientIdInput.addEventListener('change', () => {
+  clientIdInput.addEventListener('input', () => {
     config.clientId = clientIdInput.value.trim();
     saveConfig();
   });

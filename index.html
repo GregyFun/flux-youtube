@@ -1,0 +1,478 @@
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  :root{
+    --bg: #14161a;
+    --surface: #1d2026;
+    --surface-2: #24272e;
+    --border: #2f333c;
+    --text: #e9e7e1;
+    --text-dim: #9a9ea8;
+    --accent: #e8a33d;
+    --danger: #e2665a;
+    --radius: 10px;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app{ max-width: 640px; margin: 0 auto; padding: 0 0 48px; }
+
+  header{
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 16px 12px;
+    background: linear-gradient(var(--bg) 80%, transparent);
+  }
+  header h1{
+    font-size: 19px; font-weight: 650; margin: 0; letter-spacing: -0.01em;
+  }
+  header h1 span{ color: var(--accent); }
+  .icon-btn{
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer;
+  }
+  .icon-btn:active{ transform: scale(0.94); }
+
+  #panel{
+    margin: 0 16px 16px; padding: 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    display: none;
+  }
+  #panel.open{ display: block; }
+  #panel label{ font-size: 12px; color: var(--text-dim); display: block; margin: 10px 0 4px; }
+  #panel label:first-child{ margin-top: 0; }
+  #panel input{
+    width: 100%; background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 9px 10px; font-size: 14px;
+  }
+  #panel .row{ display: flex; gap: 8px; }
+  #panel .row input{ flex: 1; }
+  #panel button.primary{
+    background: var(--accent); color: #1a1200; border: none; font-weight: 600;
+    border-radius: 8px; padding: 9px 14px; font-size: 14px; cursor: pointer; white-space: nowrap;
+  }
+  #panel button.primary:disabled{ opacity: 0.5; }
+  #panel button.primary.wide{ width: 100%; margin-top: 8px; }
+  #panel button.primary.wide:disabled{ opacity: 0.5; }
+  #panel small{ color: var(--text-dim); font-size: 12px; line-height: 1.5; display: block; margin-top: 6px; }
+  #panel small a{ color: var(--accent); }
+  #panel hr{ border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  #chan-list{ margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .chan-row{
+    display: flex; align-items: center; gap: 8px; font-size: 13px;
+    background: var(--surface-2); border-radius: 8px; padding: 6px 8px;
+  }
+  .chan-row img{ width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+  .chan-row span{ flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chan-row button{
+    background: none; border: none; color: var(--danger); font-size: 13px; cursor: pointer; padding: 2px 4px;
+  }
+
+  #status{ padding: 4px 16px 4px; font-size: 12px; color: var(--text-dim); min-height: 16px; }
+
+  #feed{ display: flex; flex-direction: column; }
+  .video{
+    display: flex; gap: 12px; padding: 10px 16px; text-decoration: none; color: inherit;
+  }
+  .video:active{ background: var(--surface); }
+  .video img{
+    width: 132px; height: 74px; object-fit: cover; border-radius: 8px; background: var(--surface-2); flex-shrink: 0;
+  }
+  .video .meta{ min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+  .video .title{
+    font-size: 14px; line-height: 1.35; font-weight: 500;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .video .sub{ font-size: 12px; color: var(--text-dim); }
+
+  #empty{ padding: 40px 24px; text-align: center; color: var(--text-dim); font-size: 14px; line-height: 1.6; }
+  #empty button{
+    margin-top: 14px; background: var(--accent); color: #1a1200; border: none; font-weight: 600;
+    border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer;
+  }
+
+  .spinner{
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    animation: spin 0.7s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 6px;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+</style>
+
+<div id="app">
+  <header>
+    <h1>Flux<span>.</span></h1>
+    <button class="icon-btn" id="settings-btn" aria-label="Réglages">⚙</button>
+  </header>
+
+  <div id="panel">
+    <label for="api-key">Clé API YouTube</label>
+    <input id="api-key" type="text" placeholder="AIza..." autocomplete="off" autocapitalize="off" spellcheck="false">
+
+    <label for="client-id">ID client OAuth Google</label>
+    <input id="client-id" type="text" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="primary wide" id="import-btn">Importer mes abonnements</button>
+    <small id="import-msg"></small>
+
+    <hr>
+
+    <label for="chan-input">Ou ajoute une chaîne manuellement (handle, URL ou ID)</label>
+    <div class="row">
+      <input id="chan-input" type="text" placeholder="@nomdelachaine" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="primary" id="add-chan-btn">Ajouter</button>
+    </div>
+    <small id="panel-msg"></small>
+
+    <div id="chan-list"></div>
+  </div>
+
+  <div id="status"></div>
+  <div id="feed"></div>
+  <div id="empty" style="display:none;">
+    Aucune chaîne ajoutée pour l'instant.<br>
+    Ouvre les réglages, colle ta clé API, puis importe tes abonnements ou ajoute des chaînes une par une.
+    <div><button id="empty-settings-btn">Ouvrir les réglages</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'yt-config';
+  let config = { apiKey: '', clientId: '', channels: [] }; // channels: [{id, title, thumb}]
+
+  const panel = document.getElementById('panel');
+  const settingsBtn = document.getElementById('settings-btn');
+  const emptySettingsBtn = document.getElementById('empty-settings-btn');
+  const apiKeyInput = document.getElementById('api-key');
+  const clientIdInput = document.getElementById('client-id');
+  const importBtn = document.getElementById('import-btn');
+  const importMsg = document.getElementById('import-msg');
+  const chanInput = document.getElementById('chan-input');
+  const addChanBtn = document.getElementById('add-chan-btn');
+  const chanList = document.getElementById('chan-list');
+  const panelMsg = document.getElementById('panel-msg');
+  const statusEl = document.getElementById('status');
+  const feedEl = document.getElementById('feed');
+  const emptyEl = document.getElementById('empty');
+
+  function togglePanel(force){
+    const open = force !== undefined ? force : !panel.classList.contains('open');
+    panel.classList.toggle('open', open);
+  }
+  settingsBtn.addEventListener('click', () => togglePanel());
+  emptySettingsBtn.addEventListener('click', () => togglePanel(true));
+
+  async function loadConfig(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        config = JSON.parse(res.value);
+      }
+    }catch(e){
+      // pas encore de config sauvegardée, ok
+    }
+    apiKeyInput.value = config.apiKey || '';
+    clientIdInput.value = config.clientId || '';
+    renderChanList();
+  }
+
+  async function saveConfig(){
+    try{
+      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(config), false);
+      if(!result){ console.error('Échec de sauvegarde'); }
+    }catch(e){
+      console.error('Erreur de stockage', e);
+    }
+  }
+
+  apiKeyInput.addEventListener('change', () => {
+    config.apiKey = apiKeyInput.value.trim();
+    saveConfig();
+  });
+
+  clientIdInput.addEventListener('change', () => {
+    config.clientId = clientIdInput.value.trim();
+    saveConfig();
+  });
+
+  function renderChanList(){
+    chanList.innerHTML = '';
+    config.channels.forEach(ch => {
+      const row = document.createElement('div');
+      row.className = 'chan-row';
+      row.innerHTML = `<img src="${ch.thumb || ''}" alt=""><span>${escapeHtml(ch.title)}</span>`;
+      const rm = document.createElement('button');
+      rm.textContent = 'retirer';
+      rm.addEventListener('click', () => {
+        config.channels = config.channels.filter(c => c.id !== ch.id);
+        saveConfig();
+        renderChanList();
+      });
+      row.appendChild(rm);
+      chanList.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
+  function extractHandleOrId(raw){
+    let s = raw.trim();
+    s = s.replace(/^https?:\/\/(www\.)?youtube\.com\//i, '');
+    s = s.replace(/\/.*$/, '') ; // coupe après le premier segment
+    if(s.startsWith('@')) return { type: 'handle', value: s };
+    if(/^UC[a-zA-Z0-9_-]{22}$/.test(s)) return { type: 'id', value: s };
+    if(!s.startsWith('@')) return { type: 'handle', value: '@' + s.replace(/^channel\//,'') };
+    return { type: 'handle', value: s };
+  }
+
+  async function resolveChannel(raw){
+    const key = config.apiKey;
+    if(!key) throw new Error('Ajoute d\'abord ta clé API.');
+    const parsed = extractHandleOrId(raw);
+    let url;
+    if(parsed.type === 'id'){
+      url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&id=${encodeURIComponent(parsed.value)}&key=${key}`;
+    } else {
+      url = `https://www.googleapis.com/youtube/v3/channels?part=snippet&forHandle=${encodeURIComponent(parsed.value)}&key=${key}`;
+    }
+    const res = await fetch(url);
+    const data = await res.json();
+    if(!res.ok){
+      throw new Error(data?.error?.message || 'Chaîne introuvable.');
+    }
+    const item = data.items && data.items[0];
+    if(!item) throw new Error('Chaîne introuvable — vérifie le handle ou l\'ID.');
+    return {
+      id: item.id,
+      title: item.snippet.title,
+      thumb: item.snippet.thumbnails?.default?.url || ''
+    };
+  }
+
+  addChanBtn.addEventListener('click', async () => {
+    const raw = chanInput.value.trim();
+    if(!raw) return;
+    panelMsg.textContent = 'Recherche…';
+    addChanBtn.disabled = true;
+    try{
+      const ch = await resolveChannel(raw);
+      if(config.channels.some(c => c.id === ch.id)){
+        panelMsg.textContent = 'Déjà dans la liste.';
+      } else {
+        config.channels.push(ch);
+        await saveConfig();
+        renderChanList();
+        panelMsg.textContent = `Ajoutée : ${ch.title}`;
+        chanInput.value = '';
+        refreshFeed();
+      }
+    }catch(e){
+      panelMsg.textContent = e.message;
+    }finally{
+      addChanBtn.disabled = false;
+    }
+  });
+
+  chanInput.addEventListener('keydown', e => { if(e.key === 'Enter') addChanBtn.click(); });
+
+  function waitForGis(timeoutMs){
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      (function check(){
+        if(window.google && window.google.accounts && window.google.accounts.oauth2){
+          resolve();
+        } else if(Date.now() - start > timeoutMs){
+          reject(new Error('La librairie Google ne s\'est pas chargée. Vérifie ta connexion et réessaie.'));
+        } else {
+          setTimeout(check, 150);
+        }
+      })();
+    });
+  }
+
+  function requestAccessToken(clientId){
+    return new Promise((resolve, reject) => {
+      try{
+        const tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: 'https://www.googleapis.com/auth/youtube.readonly',
+          callback: (resp) => {
+            if(resp.error) reject(new Error(resp.error_description || resp.error));
+            else resolve(resp.access_token);
+          },
+          error_callback: (err) => {
+            reject(new Error(err?.message || 'Connexion Google annulée ou refusée.'));
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: '' });
+      }catch(e){ reject(e); }
+    });
+  }
+
+  async function fetchAllSubscriptions(token){
+    let subs = [];
+    let pageToken = '';
+    do{
+      const url = `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50&order=alphabetical${pageToken ? '&pageToken=' + pageToken : ''}`;
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data?.error?.message || 'Échec de récupération des abonnements.');
+      subs = subs.concat(data.items || []);
+      pageToken = data.nextPageToken || '';
+    } while(pageToken);
+    return subs.map(it => ({
+      id: it.snippet.resourceId.channelId,
+      title: it.snippet.title,
+      thumb: it.snippet.thumbnails?.default?.url || ''
+    }));
+  }
+
+  importBtn.addEventListener('click', async () => {
+    const clientId = clientIdInput.value.trim();
+    if(!clientId){
+      importMsg.textContent = 'Colle d\'abord ton ID client OAuth Google.';
+      return;
+    }
+    config.clientId = clientId;
+    saveConfig();
+    importBtn.disabled = true;
+    importMsg.innerHTML = '<span class="spinner"></span> Connexion à Google…';
+    try{
+      await waitForGis(8000);
+      const token = await requestAccessToken(clientId);
+      importMsg.innerHTML = '<span class="spinner"></span> Récupération de tes abonnements…';
+      const subs = await fetchAllSubscriptions(token);
+      let added = 0;
+      subs.forEach(ch => {
+        if(!config.channels.some(c => c.id === ch.id)){
+          config.channels.push(ch);
+          added++;
+        }
+      });
+      await saveConfig();
+      renderChanList();
+      importMsg.textContent = `${subs.length} abonnements trouvés, ${added} nouvelle(s) chaîne(s) ajoutée(s).`;
+      refreshFeed();
+    }catch(e){
+      importMsg.textContent = 'Erreur : ' + e.message;
+    }finally{
+      importBtn.disabled = false;
+    }
+  });
+
+  function parseDurationSeconds(iso){
+    const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso || '');
+    if(!m) return 0;
+    const h = parseInt(m[1] || '0', 10), mi = parseInt(m[2] || '0', 10), s = parseInt(m[3] || '0', 10);
+    return h * 3600 + mi * 60 + s;
+  }
+
+  function timeAgo(iso){
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    const units = [[31536000,'an'],[2592000,'mois'],[86400,'j'],[3600,'h'],[60,'min']];
+    for(const [secs, label] of units){
+      if(diff >= secs){
+        const n = Math.floor(diff / secs);
+        return `il y a ${n} ${label}${label!=='mois' && label!=='h' && label!=='min' && n>1 ? 's':''}`;
+      }
+    }
+    return 'à l\'instant';
+  }
+
+  async function refreshFeed(){
+    if(config.channels.length === 0){
+      emptyEl.style.display = 'block';
+      feedEl.innerHTML = '';
+      return;
+    }
+    if(!config.apiKey){
+      statusEl.innerHTML = 'Ajoute ta clé API dans les réglages.';
+      return;
+    }
+    emptyEl.style.display = 'none';
+    statusEl.innerHTML = '<span class="spinner"></span> Chargement des dernières vidéos…';
+    feedEl.innerHTML = '';
+
+    try{
+      const key = config.apiKey;
+      const perChannel = await Promise.all(config.channels.map(async ch => {
+        const uploadsPlaylist = 'UU' + ch.id.slice(2);
+        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylist}&maxResults=5&key=${key}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(!res.ok) return [];
+        return (data.items || []).map(it => ({
+          videoId: it.snippet.resourceId?.videoId,
+          title: it.snippet.title,
+          publishedAt: it.snippet.publishedAt,
+          thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || '',
+          channelTitle: ch.title
+        })).filter(v => v.videoId);
+      }));
+
+      let videos = perChannel.flat();
+
+      // Filtrer les Shorts via la durée réelle (videos.list, par lots de 50)
+      const ids = videos.map(v => v.videoId);
+      const durations = {};
+      for(let i = 0; i < ids.length; i += 50){
+        const batch = ids.slice(i, i + 50);
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${batch.join(',')}&key=${key}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if(res.ok){
+          (data.items || []).forEach(it => {
+            durations[it.id] = parseDurationSeconds(it.contentDetails.duration);
+          });
+        }
+      }
+
+      videos = videos.filter(v => (durations[v.videoId] ?? 999) > 60);
+      videos.sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+      if(videos.length === 0){
+        statusEl.textContent = 'Aucune vidéo récente (hors Shorts) trouvée.';
+      } else {
+        statusEl.textContent = `Mis à jour ${timeAgo(new Date().toISOString())} — ${videos.length} vidéos`;
+      }
+
+      feedEl.innerHTML = '';
+      videos.forEach(v => {
+        const a = document.createElement('a');
+        a.className = 'video';
+        a.href = `https://www.youtube.com/watch?v=${v.videoId}`;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.innerHTML = `
+          <img src="${v.thumb}" alt="" loading="lazy">
+          <div class="meta">
+            <div class="title">${escapeHtml(v.title)}</div>
+            <div class="sub">${escapeHtml(v.channelTitle)} · ${timeAgo(v.publishedAt)}</div>
+          </div>`;
+        feedEl.appendChild(a);
+      });
+    }catch(e){
+      statusEl.textContent = 'Erreur : ' + e.message;
+    }
+  }
+
+  (async function init(){
+    await loadConfig();
+    if(!config.apiKey || config.channels.length === 0){
+      togglePanel(true);
+    }
+    refreshFeed();
+  })();
+})();
+</script>

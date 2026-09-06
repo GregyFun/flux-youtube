@@ -171,12 +171,12 @@
 
   async function loadConfig(){
     try{
-      const res = await window.storage.get(STORAGE_KEY, false);
-      if(res && res.value){
-        config = JSON.parse(res.value);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        config = JSON.parse(raw);
       }
     }catch(e){
-      // pas encore de config sauvegardée, ok
+      // pas encore de config sauvegardée, ou stockage indisponible — ok
     }
     apiKeyInput.value = config.apiKey || '';
     clientIdInput.value = config.clientId || '';
@@ -185,8 +185,7 @@
 
   async function saveConfig(){
     try{
-      const result = await window.storage.set(STORAGE_KEY, JSON.stringify(config), false);
-      if(!result){ console.error('Échec de sauvegarde'); }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
     }catch(e){
       console.error('Erreur de stockage', e);
     }

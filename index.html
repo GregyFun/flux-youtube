@@ -19,28 +19,87 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  #app{ max-width: 640px; margin: 0 auto; padding: 0 0 48px; }
+  a{ color: inherit; }
 
+  /* ---------- Header ---------- */
   header{
-    position: sticky; top: 0; z-index: 5;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 16px 12px;
-    background: linear-gradient(var(--bg) 80%, transparent);
+    position: sticky; top: 0; z-index: 20;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
   }
-  header h1{
+  .header-top{
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px 10px;
+  }
+  .header-top h1{
     font-size: 19px; font-weight: 650; margin: 0; letter-spacing: -0.01em;
+    margin-right: auto;
   }
-  header h1 span{ color: var(--accent); }
+  .header-top h1 span{ color: var(--accent); }
   .icon-btn{
     background: var(--surface); border: 1px solid var(--border); color: var(--text);
-    width: 36px; height: 36px; border-radius: 50%;
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
     font-size: 16px; cursor: pointer;
   }
   .icon-btn:active{ transform: scale(0.94); }
+  .search-wrap{
+    position: relative; padding: 0 16px 12px;
+  }
+  .search-wrap .search-icon{
+    position: absolute; left: 28px; top: 50%; transform: translateY(-50%);
+    font-size: 14px; opacity: 0.6; pointer-events: none;
+  }
+  .search-wrap input{
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); border-radius: 999px; padding: 10px 14px 10px 36px; font-size: 14px;
+  }
+  .search-wrap input:focus{ outline: none; border-color: var(--accent); }
 
+  /* ---------- Layout: sidebar + main ---------- */
+  #body-layout{ display: flex; align-items: flex-start; }
+
+  #overlay{
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 25;
+  }
+  #overlay.open{ opacity: 1; pointer-events: auto; }
+
+  #sidebar{
+    position: fixed; top: 0; left: 0; bottom: 0; width: 250px; z-index: 30;
+    background: var(--surface); border-right: 1px solid var(--border);
+    transform: translateX(-100%); transition: transform 0.2s;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #sidebar.open{ transform: translateX(0); }
+  .sidebar-header{
+    padding: 16px 16px 10px; font-size: 13px; font-weight: 650; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+  }
+  #sidebar-list{ overflow-y: auto; padding: 4px 8px 16px; }
+  .side-chan{
+    display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px;
+    text-decoration: none; font-size: 14px;
+  }
+  .side-chan:active{ background: var(--surface-2); }
+  .side-chan img{ width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0; background: var(--surface-2); }
+  .side-chan span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  #main{ flex: 1; min-width: 0; max-width: 1400px; margin: 0 auto; }
+
+  @media (min-width: 900px){
+    #menu-btn{ display: none; }
+    #overlay{ display: none; }
+    #sidebar{
+      position: sticky; top: 65px; transform: none; height: calc(100vh - 65px);
+      border-right: 1px solid var(--border);
+    }
+    #body-layout{ align-items: flex-start; }
+  }
+
+  /* ---------- Settings panel ---------- */
   #panel{
-    margin: 0 16px 16px; padding: 14px; background: var(--surface);
+    margin: 16px; padding: 14px; background: var(--surface);
     border: 1px solid var(--border); border-radius: var(--radius);
     display: none;
   }
@@ -77,20 +136,27 @@
 
   #status{ padding: 4px 16px 4px; font-size: 12px; color: var(--text-dim); min-height: 16px; }
 
-  #feed{ display: flex; flex-direction: column; }
-  .video{
-    display: flex; gap: 12px; padding: 10px 16px; text-decoration: none; color: inherit;
+  /* ---------- Video grid ---------- */
+  #feed{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px 16px;
+    padding: 12px 16px 32px;
   }
-  .video:active{ background: var(--surface); }
-  .video img{
-    width: 132px; height: 74px; object-fit: cover; border-radius: 8px; background: var(--surface-2); flex-shrink: 0;
-  }
-  .video .meta{ min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
-  .video .title{
-    font-size: 14px; line-height: 1.35; font-weight: 500;
+  .video-card{ display: flex; flex-direction: column; min-width: 0; }
+  .thumb-link{ display: block; border-radius: 12px; overflow: hidden; background: var(--surface-2); aspect-ratio: 16/9; }
+  .thumb-link img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+  .video-info{ display: flex; gap: 10px; margin-top: 10px; }
+  .avatar-link{ flex-shrink: 0; }
+  .avatar-link img{ width: 36px; height: 36px; border-radius: 50%; background: var(--surface-2); object-fit: cover; }
+  .video-text{ min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .v-title{
+    font-size: 14px; line-height: 1.35; font-weight: 500; text-decoration: none;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
-  .video .sub{ font-size: 12px; color: var(--text-dim); }
+  .v-channel{ font-size: 12.5px; color: var(--text-dim); text-decoration: none; }
+  .v-channel:active{ color: var(--text); }
+  .v-meta{ font-size: 12.5px; color: var(--text-dim); }
 
   #empty{ padding: 40px 24px; text-align: center; color: var(--text-dim); font-size: 14px; line-height: 1.6; }
   #empty button{
@@ -106,46 +172,68 @@
   @keyframes spin{ to{ transform: rotate(360deg); } }
 </style>
 
-<div id="app">
-  <header>
+<header>
+  <div class="header-top">
+    <button class="icon-btn" id="menu-btn" aria-label="Abonnements">☰</button>
     <h1>Flux<span>.</span></h1>
     <button class="icon-btn" id="settings-btn" aria-label="Réglages">⚙</button>
-  </header>
+  </div>
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input id="search-input" type="text" placeholder="Rechercher dans les titres" autocomplete="off">
+  </div>
+</header>
 
-  <div id="panel">
-    <label for="api-key">Clé API YouTube</label>
-    <input id="api-key" type="text" placeholder="AIza..." autocomplete="off" autocapitalize="off" spellcheck="false">
+<div id="body-layout">
+  <div id="overlay"></div>
+  <aside id="sidebar">
+    <div class="sidebar-header">Abonnements</div>
+    <div id="sidebar-list"></div>
+  </aside>
 
-    <label for="client-id">ID client OAuth Google</label>
-    <input id="client-id" type="text" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
-    <button class="primary wide" id="import-btn">Importer mes abonnements</button>
-    <small id="import-msg"></small>
+  <main id="main">
+    <div id="panel">
+      <label for="api-key">Clé API YouTube</label>
+      <input id="api-key" type="text" placeholder="AIza..." autocomplete="off" autocapitalize="off" spellcheck="false">
 
-    <hr>
+      <label for="client-id">ID client OAuth Google</label>
+      <input id="client-id" type="text" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <button class="primary wide" id="import-btn">Importer mes abonnements</button>
+      <small id="import-msg"></small>
 
-    <label for="chan-input">Ou ajoute une chaîne manuellement (handle, URL ou ID)</label>
-    <div class="row">
-      <input id="chan-input" type="text" placeholder="@nomdelachaine" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <button class="primary" id="add-chan-btn">Ajouter</button>
+      <hr>
+
+      <label for="chan-input">Ou ajoute une chaîne manuellement (handle, URL ou ID)</label>
+      <div class="row">
+        <input id="chan-input" type="text" placeholder="@nomdelachaine" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <button class="primary" id="add-chan-btn">Ajouter</button>
+      </div>
+      <small id="panel-msg"></small>
+
+      <div id="chan-list"></div>
     </div>
-    <small id="panel-msg"></small>
 
-    <div id="chan-list"></div>
-  </div>
-
-  <div id="status"></div>
-  <div id="feed"></div>
-  <div id="empty" style="display:none;">
-    Aucune chaîne ajoutée pour l'instant.<br>
-    Ouvre les réglages, colle ta clé API, puis importe tes abonnements ou ajoute des chaînes une par une.
-    <div><button id="empty-settings-btn">Ouvrir les réglages</button></div>
-  </div>
+    <div id="status"></div>
+    <div id="feed"></div>
+    <div id="empty" style="display:none;">
+      Aucune chaîne ajoutée pour l'instant.<br>
+      Ouvre les réglages, colle ta clé API, puis importe tes abonnements ou ajoute des chaînes une par une.
+      <div><button id="empty-settings-btn">Ouvrir les réglages</button></div>
+    </div>
+  </main>
 </div>
 
 <script>
 (function(){
   const STORAGE_KEY = 'yt-config';
   let config = { apiKey: '', clientId: '', channels: [] }; // channels: [{id, title, thumb}]
+  let allVideos = []; // dernier flux complet (hors Shorts), avant filtre de recherche
+
+  const menuBtn = document.getElementById('menu-btn');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const sidebarList = document.getElementById('sidebar-list');
+  const searchInput = document.getElementById('search-input');
 
   const panel = document.getElementById('panel');
   const settingsBtn = document.getElementById('settings-btn');
@@ -169,6 +257,25 @@
   settingsBtn.addEventListener('click', () => togglePanel());
   emptySettingsBtn.addEventListener('click', () => togglePanel(true));
 
+  function openSidebar(force){
+    const open = force !== undefined ? force : !sidebar.classList.contains('open');
+    sidebar.classList.toggle('open', open);
+    overlay.classList.toggle('open', open);
+  }
+  menuBtn.addEventListener('click', () => openSidebar());
+  overlay.addEventListener('click', () => openSidebar(false));
+  sidebarList.addEventListener('click', (e) => {
+    if(e.target.closest('.side-chan')) openSidebar(false);
+  });
+
+  function channelUrl(id){ return `https://www.youtube.com/channel/${id}/videos`; }
+
+  function escapeHtml(s){
+    const d = document.createElement('div');
+    d.textContent = s || '';
+    return d.innerHTML;
+  }
+
   async function loadConfig(){
     try{
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -181,6 +288,7 @@
     apiKeyInput.value = config.apiKey || '';
     clientIdInput.value = config.clientId || '';
     renderChanList();
+    renderSidebar();
   }
 
   async function saveConfig(){
@@ -213,16 +321,25 @@
         config.channels = config.channels.filter(c => c.id !== ch.id);
         saveConfig();
         renderChanList();
+        renderSidebar();
       });
       row.appendChild(rm);
       chanList.appendChild(row);
     });
   }
 
-  function escapeHtml(s){
-    const d = document.createElement('div');
-    d.textContent = s || '';
-    return d.innerHTML;
+  function renderSidebar(){
+    sidebarList.innerHTML = '';
+    const sorted = [...config.channels].sort((a,b) => a.title.localeCompare(b.title, 'fr'));
+    sorted.forEach(ch => {
+      const a = document.createElement('a');
+      a.className = 'side-chan';
+      a.href = channelUrl(ch.id);
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.innerHTML = `<img src="${ch.thumb || ''}" alt=""><span>${escapeHtml(ch.title)}</span>`;
+      sidebarList.appendChild(a);
+    });
   }
 
   function extractHandleOrId(raw){
@@ -272,6 +389,7 @@
         config.channels.push(ch);
         await saveConfig();
         renderChanList();
+        renderSidebar();
         panelMsg.textContent = `Ajoutée : ${ch.title}`;
         chanInput.value = '';
         refreshFeed();
@@ -361,6 +479,7 @@
       });
       await saveConfig();
       renderChanList();
+      renderSidebar();
       importMsg.textContent = `${subs.length} abonnements trouvés, ${added} nouvelle(s) chaîne(s) ajoutée(s).`;
       refreshFeed();
     }catch(e){
@@ -389,6 +508,53 @@
     return 'à l\'instant';
   }
 
+  function formatViews(n){
+    if(n === undefined || n === null) return '';
+    try{
+      return new Intl.NumberFormat('fr-FR', { notation: 'compact', compactDisplay: 'short' }).format(n) + ' vues';
+    }catch(e){
+      return n + ' vues';
+    }
+  }
+
+  function normalize(s){
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+
+  function renderFeed(list){
+    feedEl.innerHTML = '';
+    list.forEach(v => {
+      const card = document.createElement('div');
+      card.className = 'video-card';
+      card.innerHTML = `
+        <a class="thumb-link" href="https://www.youtube.com/watch?v=${v.videoId}" target="_blank" rel="noopener">
+          <img src="${v.thumb}" alt="" loading="lazy">
+        </a>
+        <div class="video-info">
+          <a class="avatar-link" href="${channelUrl(v.channelId)}" target="_blank" rel="noopener">
+            <img src="${v.channelThumb || ''}" alt="">
+          </a>
+          <div class="video-text">
+            <a class="v-title" href="https://www.youtube.com/watch?v=${v.videoId}" target="_blank" rel="noopener">${escapeHtml(v.title)}</a>
+            <a class="v-channel" href="${channelUrl(v.channelId)}" target="_blank" rel="noopener">${escapeHtml(v.channelTitle)}</a>
+            <div class="v-meta">${formatViews(v.views)} · ${timeAgo(v.publishedAt)}</div>
+          </div>
+        </div>`;
+      feedEl.appendChild(card);
+    });
+  }
+
+  function applyFilterAndRender(){
+    const q = normalize(searchInput.value);
+    const filtered = q ? allVideos.filter(v => normalize(v.title).includes(q)) : allVideos;
+    renderFeed(filtered);
+    if(allVideos.length > 0 && filtered.length === 0){
+      statusEl.textContent = 'Aucun titre ne correspond à ta recherche.';
+    }
+  }
+
+  searchInput.addEventListener('input', applyFilterAndRender);
+
   async function refreshFeed(){
     if(config.channels.length === 0){
       emptyEl.style.display = 'block';
@@ -415,52 +581,46 @@
           videoId: it.snippet.resourceId?.videoId,
           title: it.snippet.title,
           publishedAt: it.snippet.publishedAt,
-          thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || '',
-          channelTitle: ch.title
+          thumb: it.snippet.thumbnails?.high?.url || it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || '',
+          channelTitle: ch.title,
+          channelId: ch.id,
+          channelThumb: ch.thumb
         })).filter(v => v.videoId);
       }));
 
       let videos = perChannel.flat();
 
-      // Filtrer les Shorts via la durée réelle (videos.list, par lots de 50)
+      // Récupérer durée (pour filtrer les Shorts) et vues, par lots de 50
       const ids = videos.map(v => v.videoId);
-      const durations = {};
+      const meta = {};
       for(let i = 0; i < ids.length; i += 50){
         const batch = ids.slice(i, i + 50);
-        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${batch.join(',')}&key=${key}`;
+        const url = `https://www.googleapis.com/youtube/v3/videos?part=contentDetails,statistics&id=${batch.join(',')}&key=${key}`;
         const res = await fetch(url);
         const data = await res.json();
         if(res.ok){
           (data.items || []).forEach(it => {
-            durations[it.id] = parseDurationSeconds(it.contentDetails.duration);
+            meta[it.id] = {
+              duration: parseDurationSeconds(it.contentDetails.duration),
+              views: it.statistics?.viewCount ? parseInt(it.statistics.viewCount, 10) : undefined
+            };
           });
         }
       }
 
-      videos = videos.filter(v => (durations[v.videoId] ?? 999) > 60);
+      videos = videos.filter(v => (meta[v.videoId]?.duration ?? 999) > 60);
+      videos.forEach(v => { v.views = meta[v.videoId]?.views; });
       videos.sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+
+      allVideos = videos;
 
       if(videos.length === 0){
         statusEl.textContent = 'Aucune vidéo récente (hors Shorts) trouvée.';
       } else {
-        statusEl.textContent = `Mis à jour ${timeAgo(new Date().toISOString())} — ${videos.length} vidéos`;
+        statusEl.textContent = `Mis à jour à l'instant — ${videos.length} vidéos`;
       }
 
-      feedEl.innerHTML = '';
-      videos.forEach(v => {
-        const a = document.createElement('a');
-        a.className = 'video';
-        a.href = `https://www.youtube.com/watch?v=${v.videoId}`;
-        a.target = '_blank';
-        a.rel = 'noopener';
-        a.innerHTML = `
-          <img src="${v.thumb}" alt="" loading="lazy">
-          <div class="meta">
-            <div class="title">${escapeHtml(v.title)}</div>
-            <div class="sub">${escapeHtml(v.channelTitle)} · ${timeAgo(v.publishedAt)}</div>
-          </div>`;
-        feedEl.appendChild(a);
-      });
+      applyFilterAndRender();
     }catch(e){
       statusEl.textContent = 'Erreur : ' + e.message;
     }

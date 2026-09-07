@@ -50,6 +50,12 @@
     scrollbar-width: none; padding: 2px 0;
   }
   #chips::-webkit-scrollbar{ display: none; }
+  .chip-nav-btn{
+    background: var(--surface); border: 1px solid var(--border); color: var(--text);
+    width: 26px; height: 26px; padding: 0; line-height: 0; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .chip-nav-btn:disabled{ opacity: 0.25; cursor: default; }
   .chip{
     flex-shrink: 0; background: var(--surface); border: 1px solid var(--border); color: var(--text);
     border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 550; cursor: pointer;
@@ -88,8 +94,8 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .unhide-all-btn{
-    background: none; border: 2px solid var(--accent); color: var(--accent); font-size: 14px; cursor: pointer;
-    width: 28px; height: 28px; border-radius: 50%; text-transform: none; letter-spacing: normal;
+    background: none; border: 2px solid var(--accent); color: var(--accent); cursor: pointer;
+    width: 28px; height: 28px; padding: 0; line-height: 0; border-radius: 50%; text-transform: none; letter-spacing: normal;
     display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .unhide-all-btn:active{ background: var(--surface-2); }
@@ -238,7 +244,9 @@
   <div class="header-top">
     <button class="icon-btn" id="menu-btn" aria-label="Abonnements">☰</button>
     <h1>Flux<span>.</span></h1>
+    <button class="chip-nav-btn" id="chips-prev" aria-label="Catégories précédentes">‹</button>
     <div id="chips"></div>
+    <button class="chip-nav-btn" id="chips-next" aria-label="Catégories suivantes">›</button>
     <button class="icon-btn" id="settings-btn" aria-label="Réglages">⚙</button>
   </div>
 </header>
@@ -309,6 +317,8 @@
   const sidebarList = document.getElementById('sidebar-list');
   const unhideAllBtn = document.getElementById('unhide-all-btn');
   const chipsEl = document.getElementById('chips');
+  const chipsPrevBtn = document.getElementById('chips-prev');
+  const chipsNextBtn = document.getElementById('chips-next');
 
   const panel = document.getElementById('panel');
   const settingsBtn = document.getElementById('settings-btn');
@@ -646,7 +656,18 @@
     };
     chipsEl.appendChild(makeChip('all', 'Tous'));
     cats.forEach(id => chipsEl.appendChild(makeChip(id, categoriesMap[id] || 'Autre')));
+    updateChipNav();
   }
+
+  function updateChipNav(){
+    const maxScroll = chipsEl.scrollWidth - chipsEl.clientWidth;
+    chipsPrevBtn.disabled = chipsEl.scrollLeft <= 2;
+    chipsNextBtn.disabled = maxScroll <= 2 || chipsEl.scrollLeft >= maxScroll - 2;
+  }
+  chipsEl.addEventListener('scroll', updateChipNav);
+  chipsPrevBtn.addEventListener('click', () => chipsEl.scrollBy({ left: -160, behavior: 'smooth' }));
+  chipsNextBtn.addEventListener('click', () => chipsEl.scrollBy({ left: 160, behavior: 'smooth' }));
+  window.addEventListener('resize', updateChipNav);
 
   function skeletonCard(){
     const card = document.createElement('div');

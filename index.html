@@ -94,9 +94,12 @@
     display: flex; align-items: center; justify-content: space-between;
   }
   .unhide-all-btn{
-    background: none; border: 2px solid var(--accent); color: var(--accent); cursor: pointer;
-    width: 28px; height: 28px; padding: 0; line-height: 0; border-radius: 50%; text-transform: none; letter-spacing: normal;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    position: relative; background: none; border: 2px solid var(--accent); color: var(--accent); cursor: pointer;
+    width: 28px; height: 28px; padding: 0; border-radius: 50%; text-transform: none; letter-spacing: normal;
+    flex-shrink: 0;
+  }
+  .unhide-all-btn svg{
+    display: block; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   }
   .unhide-all-btn:active{ background: var(--surface-2); }
   .unhide-all-btn:disabled{ opacity: 0.3; cursor: default; border-color: var(--text-dim); color: var(--text-dim); }
@@ -113,9 +116,11 @@
   .side-chan span{ overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .side-chan-row.hidden-chan{ opacity: 0.45; }
   .side-hide-btn{
-    background: none; border: none; color: var(--text-dim); cursor: pointer;
-    padding: 6px; flex-shrink: 0; border-radius: 6px;
-    display: flex; align-items: center; justify-content: center;
+    position: relative; background: none; border: none; color: var(--text-dim); cursor: pointer;
+    width: 28px; height: 28px; padding: 0; flex-shrink: 0; border-radius: 6px;
+  }
+  .side-hide-btn svg{
+    display: block; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
   }
   .side-hide-btn:active{ background: var(--surface-3); }
 

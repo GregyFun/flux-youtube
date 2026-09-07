@@ -705,7 +705,7 @@
       videoId: it.snippet.resourceId?.videoId,
       title: it.snippet.title,
       publishedAt: it.snippet.publishedAt,
-      thumb: it.snippet.thumbnails?.high?.url || it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || '',
+      thumb: it.snippet.thumbnails?.maxres?.url || it.snippet.thumbnails?.standard?.url || it.snippet.thumbnails?.high?.url || it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url || '',
       channelTitle: ch.title, channelId: ch.id, channelThumb: ch.thumb
     })).filter(v => v.videoId);
     if(items.length === 0) return [];
@@ -718,18 +718,21 @@
     if(metaRes.ok){
       (metaData.items || []).forEach(it => {
         const duration = parseDurationSeconds(it.contentDetails.duration);
+        const t = it.snippet?.thumbnails;
         meta[it.id] = {
           duration,
           views: it.statistics?.viewCount ? parseInt(it.statistics.viewCount, 10) : undefined,
           categoryId: it.snippet?.categoryId,
-          isShort: shortIds.has(it.id) || (duration <= 180 && isVerticalThumbnail(it.snippet?.thumbnails))
+          isShort: shortIds.has(it.id) || (duration <= 180 && isVerticalThumbnail(t)),
+          thumb: t?.maxres?.url || t?.standard?.url || t?.high?.url || t?.medium?.url || t?.default?.url
         };
       });
     }
     return items.map(v => Object.assign(v, {
       views: meta[v.videoId]?.views,
       categoryId: meta[v.videoId]?.categoryId,
-      isShort: meta[v.videoId]?.isShort || false
+      isShort: meta[v.videoId]?.isShort || false,
+      thumb: meta[v.videoId]?.thumb || v.thumb
     }));
   }
 

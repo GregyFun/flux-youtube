@@ -83,16 +83,17 @@
   .switch input:checked + .switch-slider:before{ background: #1a1200; transform: translateX(16px); }
 
   .sidebar-header{
-    padding: 16px 16px 10px; font-size: 13px; font-weight: 650; color: var(--text-dim);
+    padding: 16px 8px 10px 16px; font-size: 13px; font-weight: 650; color: var(--text-dim);
     text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
     display: flex; align-items: center; justify-content: space-between;
   }
   .unhide-all-btn{
-    background: none; border: none; color: var(--text-dim); font-size: 15px; cursor: pointer;
-    padding: 4px 6px; border-radius: 6px; text-transform: none; letter-spacing: normal;
+    background: none; border: 2px solid var(--accent); color: var(--accent); font-size: 14px; cursor: pointer;
+    width: 28px; height: 28px; border-radius: 50%; text-transform: none; letter-spacing: normal;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   }
   .unhide-all-btn:active{ background: var(--surface-2); }
-  .unhide-all-btn:disabled{ opacity: 0.3; cursor: default; }
+  .unhide-all-btn:disabled{ opacity: 0.3; cursor: default; border-color: var(--text-dim); color: var(--text-dim); }
   #sidebar-list{ overflow-y: auto; padding: 4px 8px 16px; flex: 1; min-height: 0; }
   .side-chan-row{
     display: flex; align-items: center; gap: 4px; border-radius: 8px;
@@ -295,7 +296,7 @@
   let config = { apiKey: '', clientId: '', channels: [], hiddenChannelIds: [], hideShorts: false };
   let allVideos = [];               // vidéos réelles déjà chargées (hors Shorts), triées par date
   let pendingChannelIds = new Set(); // chaînes dont le chargement n'est pas terminé
-  let channelLastPublished = {};     // channelId -> date de la vidéo la plus récente connue
+  let channelDates = {};     // channelId -> { all: date la plus récente (tout compris), nonShort: date la plus récente hors Shorts }
   let categoriesMap = {};            // categoryId -> nom lisible
   let categoriesLoaded = false;
   let activeCategory = 'all';
@@ -374,6 +375,7 @@
     config.hideShorts = hideShortsToggle.checked;
     saveConfig();
     applyFilterAndRender();
+    renderSidebar();
   });
 
   function renderChanList(){
@@ -417,12 +419,19 @@
   }
   unhideAllBtn.addEventListener('click', unhideAll);
 
+  function lastDateFor(channelId){
+    const d = channelDates[channelId];
+    if(!d) return 0;
+    const val = config.hideShorts ? (d.nonShort || d.all) : d.all;
+    return val ? new Date(val).getTime() : 0;
+  }
+
   function renderSidebar(){
     sidebarList.innerHTML = '';
     unhideAllBtn.disabled = config.hiddenChannelIds.length === 0;
     const sorted = [...config.channels].sort((a,b) => {
-      const da = channelLastPublished[a.id] ? new Date(channelLastPublished[a.id]).getTime() : 0;
-      const db = channelLastPublished[b.id] ? new Date(channelLastPublished[b.id]).getTime() : 0;
+      const da = lastDateFor(a.id);
+      const db = lastDateFor(b.id);
       return db - da;
     });
     sorted.forEach(ch => {
@@ -763,7 +772,12 @@
     fetchChannelVideos(ch).then(vids => {
       allVideos = allVideos.concat(vids).sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
       if(vids.length > 0){
-        channelLastPublished[ch.id] = vids.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, vids[0].publishedAt);
+        const maxAll = vids.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, vids[0].publishedAt);
+        const nonShorts = vids.filter(v => !v.isShort);
+        const maxNonShort = nonShorts.length > 0
+          ? nonShorts.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, nonShorts[0].publishedAt)
+          : null;
+        channelDates[ch.id] = { all: maxAll, nonShort: maxNonShort };
       }
     }).catch(() => {}).finally(() => {
       pendingChannelIds.delete(ch.id);

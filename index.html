@@ -160,6 +160,7 @@
   #panel small{ color: var(--text-dim); font-size: 12px; line-height: 1.5; display: block; margin-top: 6px; }
   #panel small a{ color: var(--accent); }
   #panel hr{ border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+  .panel-section-title{ font-size: 13px; font-weight: 650; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
 
   #chan-list{ margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
   .chan-row{
@@ -284,6 +285,17 @@
 
       <hr>
 
+      <div class="panel-section-title">Paramètres</div>
+      <label for="max-videos">Nombre de vidéos max récupérées par chaîne</label>
+      <input id="max-videos" type="number" min="1" max="50" step="1" value="5">
+      <small>Entre 1 et 50. N'a pas d'impact sur le quota API — seulement sur la quantité de données chargées et affichées.</small>
+
+      <label for="stale-days">Jours d'inactivité avant de ne vérifier une chaîne qu'une fois par jour</label>
+      <input id="stale-days" type="number" min="1" max="365" step="1" value="30">
+      <small>Passé ce délai depuis sa dernière vidéo connue, une chaîne n'est requêtée qu'une seule fois par jour au lieu de à chaque rafraîchissement — ça économise du quota sur les abonnements peu actifs.</small>
+
+      <hr>
+
       <label for="chan-input">Ou ajoute une chaîne manuellement (handle, URL ou ID)</label>
       <div class="row">
         <input id="chan-input" type="text" placeholder="@nomdelachaine" autocomplete="off" autocapitalize="off" spellcheck="false">
@@ -307,7 +319,7 @@
 <script>
 (function(){
   const STORAGE_KEY = 'yt-config';
-  let config = { apiKey: '', clientId: '', channels: [], hiddenChannelIds: [], hideShorts: false };
+  let config = { apiKey: '', clientId: '', channels: [], hiddenChannelIds: [], hideShorts: false, maxVideosPerChannel: 5, staleDaysThreshold: 30, channelCache: {} };
   let allVideos = [];               // vidéos réelles déjà chargées (hors Shorts), triées par date
   let pendingChannelIds = new Set(); // chaînes dont le chargement n'est pas terminé
   let channelDates = {};     // channelId -> { all: date la plus récente (tout compris), nonShort: date la plus récente hors Shorts }
@@ -330,6 +342,8 @@
   const emptySettingsBtn = document.getElementById('empty-settings-btn');
   const apiKeyInput = document.getElementById('api-key');
   const clientIdInput = document.getElementById('client-id');
+  const maxVideosInput = document.getElementById('max-videos');
+  const staleDaysInput = document.getElementById('stale-days');
   const importBtn = document.getElementById('import-btn');
   const importMsg = document.getElementById('import-msg');
   const chanInput = document.getElementById('chan-input');
@@ -372,11 +386,13 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if(raw){
         const parsed = JSON.parse(raw);
-        config = Object.assign({ apiKey:'', clientId:'', channels:[], hiddenChannelIds:[], hideShorts:false }, parsed);
+        config = Object.assign({ apiKey:'', clientId:'', channels:[], hiddenChannelIds:[], hideShorts:false, maxVideosPerChannel:5, staleDaysThreshold:30, channelCache:{} }, parsed);
       }
     }catch(e){ /* pas de config sauvegardée, ou stockage indisponible — ok */ }
     apiKeyInput.value = config.apiKey || '';
     clientIdInput.value = config.clientId || '';
+    maxVideosInput.value = config.maxVideosPerChannel || 5;
+    staleDaysInput.value = config.staleDaysThreshold || 30;
     hideShortsToggle.checked = !!config.hideShorts;
     renderChanList();
     renderSidebar();
@@ -389,6 +405,24 @@
 
   apiKeyInput.addEventListener('input', () => { config.apiKey = apiKeyInput.value.trim(); saveConfig(); });
   clientIdInput.addEventListener('input', () => { config.clientId = clientIdInput.value.trim(); saveConfig(); });
+
+  maxVideosInput.addEventListener('change', () => {
+    let n = parseInt(maxVideosInput.value, 10);
+    if(isNaN(n)) n = 5;
+    n = Math.min(50, Math.max(1, n));
+    maxVideosInput.value = n;
+    config.maxVideosPerChannel = n;
+    saveConfig();
+  });
+
+  staleDaysInput.addEventListener('change', () => {
+    let n = parseInt(staleDaysInput.value, 10);
+    if(isNaN(n)) n = 30;
+    n = Math.min(365, Math.max(1, n));
+    staleDaysInput.value = n;
+    config.staleDaysThreshold = n;
+    saveConfig();
+  });
 
   hideShortsToggle.addEventListener('change', () => {
     config.hideShorts = hideShortsToggle.checked;
@@ -408,6 +442,9 @@
       rm.addEventListener('click', () => {
         config.channels = config.channels.filter(c => c.id !== ch.id);
         config.hiddenChannelIds = config.hiddenChannelIds.filter(id => id !== ch.id);
+        delete config.channelCache[ch.id];
+        delete channelDates[ch.id];
+        allVideos = allVideos.filter(v => v.channelId !== ch.id);
         saveConfig();
         renderChanList();
         renderSidebar();
@@ -757,7 +794,7 @@
   async function fetchChannelVideos(ch){
     const key = config.apiKey;
     const uploadsPlaylist = 'UU' + ch.id.slice(2);
-    const listUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylist}&maxResults=5&key=${key}`;
+    const listUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylist}&maxResults=${config.maxVideosPerChannel || 5}&key=${key}`;
     const listRes = await fetch(listUrl);
     const listData = await listRes.json();
     if(!listRes.ok) return [];
@@ -796,19 +833,47 @@
     }));
   }
 
+  function todayStr(){ return new Date().toISOString().slice(0, 10); }
+
+  function daysSince(dateStr){
+    return (Date.now() - new Date(dateStr).getTime()) / 86400000;
+  }
+
+  function applyChannelResult(ch, vids){
+    allVideos = allVideos.concat(vids).sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    if(vids.length > 0){
+      const maxAll = vids.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, vids[0].publishedAt);
+      const nonShorts = vids.filter(v => !v.isShort);
+      const maxNonShort = nonShorts.length > 0
+        ? nonShorts.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, nonShorts[0].publishedAt)
+        : null;
+      channelDates[ch.id] = { all: maxAll, nonShort: maxNonShort };
+    }
+  }
+
   function loadChannel(ch){
+    const cache = config.channelCache[ch.id];
+    const today = todayStr();
+    const isDormant = cache?.lastKnownDate && daysSince(cache.lastKnownDate) > (config.staleDaysThreshold || 30);
+
+    if(cache && isDormant && cache.lastCheckedDate === today){
+      // Chaîne inactive déjà vérifiée aujourd'hui : on réutilise le cache, aucun appel réseau.
+      applyChannelResult(ch, cache.videos || []);
+      pendingChannelIds.delete(ch.id);
+      applyFilterAndRender();
+      renderSidebar();
+      return;
+    }
+
     pendingChannelIds.add(ch.id);
     applyFilterAndRender();
     fetchChannelVideos(ch).then(vids => {
-      allVideos = allVideos.concat(vids).sort((a,b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-      if(vids.length > 0){
-        const maxAll = vids.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, vids[0].publishedAt);
-        const nonShorts = vids.filter(v => !v.isShort);
-        const maxNonShort = nonShorts.length > 0
-          ? nonShorts.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, nonShorts[0].publishedAt)
-          : null;
-        channelDates[ch.id] = { all: maxAll, nonShort: maxNonShort };
-      }
+      const maxKnown = vids.length > 0
+        ? vids.reduce((latest, v) => v.publishedAt > latest ? v.publishedAt : latest, vids[0].publishedAt)
+        : (cache?.lastKnownDate || null);
+      config.channelCache[ch.id] = { videos: vids, lastCheckedDate: today, lastKnownDate: maxKnown };
+      saveConfig();
+      applyChannelResult(ch, vids);
     }).catch(() => {}).finally(() => {
       pendingChannelIds.delete(ch.id);
       applyFilterAndRender();

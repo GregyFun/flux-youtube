@@ -185,6 +185,15 @@
   .video-card{ display: flex; flex-direction: column; min-width: 0; position: relative; }
   .thumb-link{ display: block; position: relative; border-radius: 12px; overflow: hidden; background: var(--surface-2); aspect-ratio: 16/9; }
   .thumb-link img{ width: 100%; height: 100%; object-fit: cover; display: block; }
+  .duration-badge{
+    position: absolute; right: 8px; bottom: 8px; z-index: 2;
+    background: rgba(20,22,26,0.88); color: #fff;
+    font-size: 12px; line-height: 1.4; font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    padding: 3px 6px; border-radius: 5px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    pointer-events: none;
+  }
   .short-badge{
     position: absolute; left: 8px; bottom: 8px; z-index: 2;
     background: rgba(20,22,26,0.9); color: var(--accent); font-size: 13px; font-weight: 700;
@@ -649,6 +658,15 @@
     return parseInt(m[1]||'0',10)*3600 + parseInt(m[2]||'0',10)*60 + parseInt(m[3]||'0',10);
   }
 
+  function formatDuration(seconds){
+    if(!Number.isFinite(seconds) || seconds <= 0) return '';
+    const total = Math.floor(seconds);
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor((total % 3600) / 60);
+    const secs = String(total % 60).padStart(2, '0');
+    return hours > 0 ? hours + ':' + String(minutes).padStart(2, '0') + ':' + secs : minutes + ':' + secs;
+  }
+
   function timeAgo(iso){
     const diff = (Date.now() - new Date(iso).getTime()) / 1000;
     const units = [[31536000,'an'],[2592000,'mois'],[86400,'j'],[3600,'h'],[60,'min']];
@@ -736,10 +754,12 @@
   function videoCard(v){
     const card = document.createElement('div');
     card.className = 'video-card';
+    const durationLabel = formatDuration(v.duration);
     card.innerHTML = `
       <a class="thumb-link" href="https://www.youtube.com/watch?v=${v.videoId}" target="_blank" rel="noopener">
         <img src="${v.thumb}" alt="" loading="lazy">
         ${v.isShort ? '<span class="short-badge">Short</span>' : ''}
+        ${durationLabel ? `<span class="duration-badge" aria-label="Durée : ${durationLabel}">${durationLabel}</span>` : ''}
       </a>
       <div class="video-info">
         <a class="avatar-link" href="${channelUrl(v.channelId)}" target="_blank" rel="noopener">
@@ -826,6 +846,7 @@
       });
     }
     return items.map(v => Object.assign(v, {
+      duration: meta[v.videoId]?.duration,
       views: meta[v.videoId]?.views,
       categoryId: meta[v.videoId]?.categoryId,
       isShort: meta[v.videoId]?.isShort || false,
@@ -856,7 +877,7 @@
     const today = todayStr();
     const isDormant = cache?.lastKnownDate && daysSince(cache.lastKnownDate) > (config.staleDaysThreshold || 30);
 
-    if(cache && isDormant && cache.lastCheckedDate === today){
+    if(cache && isDormant && cache.lastCheckedDate === today && (cache.videos || []).every(v => Object.prototype.hasOwnProperty.call(v, 'duration'))){
       // Chaîne inactive déjà vérifiée aujourd'hui : on réutilise le cache, aucun appel réseau.
       applyChannelResult(ch, cache.videos || []);
       pendingChannelIds.delete(ch.id);
